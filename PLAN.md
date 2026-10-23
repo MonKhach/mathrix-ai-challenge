@@ -51,7 +51,7 @@ All models expect **16 kHz mono**. System audio usually arrives as 48 kHz stereo
 | Running out of time | Walking skeleton first, then improve only the weakest link |
 
 ## 7. Testing
-- **Evaluation set:** ~10–20 short Armenian clips (own voice + at least 2 other people / online videos), each with its correct text written out. Audio is **not** committed to Git.
+- **Evaluation set (v1):** 15 short Armenian clips — 7 own voice (mic) + 8 from YouTube videos/podcasts (system loopback), each with its correct text in `eval/references.tsv`. Friends' call clips added at M4. Audio is **not** committed to Git.
 - **Metrics:** WER (word error rate), CER (character error rate), latency (end of phrase → printed line), RAM usage, speaker-label accuracy on a test call.
 - **TESTS.md:** checklist derived directly from the challenge requirements.
 
