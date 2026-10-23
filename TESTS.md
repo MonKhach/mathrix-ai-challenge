@@ -18,7 +18,7 @@ Status: ⬜ not run · ✅ pass · ❌ fail. Update the status and date when a c
 | # | Check | How | Status |
 |---|---|---|---|
 | B1 | Latency **≤ 5 s** from end of phrase to English line | Measured and logged per segment (median and worst case) | ✅ single source 2026-10-23: mic 1.1–1.3 s, YouTube 2.2–2.7 s. ⬜ both sources at once (M4) |
-| B2 | Runs **fully offline** (no cloud APIs) | Disconnect from the internet after models are downloaded → program still works | ⬜ |
+| B2 | Runs **fully offline** (no cloud APIs) | Disconnect from the internet after models are downloaded → program still works | ✅ 2026-10-23 Wi-Fi off, mic source: models loaded, no HF warning, transcription + translation OK. ⬜ recheck after speaker model is added |
 | B3 | Fits in **8 GB RAM** while a call app is running | Task Manager during a live test | ⬜ |
 | B4 | No paid tools/services used | Review dependencies list | ⬜ |
 | B5 | Runs on **this laptop** (Windows 11, CPU only) | Full rehearsal before the interview | ⬜ |
