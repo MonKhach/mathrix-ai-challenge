@@ -10,3 +10,9 @@ jiwer
 pytest
 # Benchmark: memory measurement
 psutil
+# Translation (CTranslate2 engine + tokenizers; no torch needed at runtime)
+ctranslate2
+transformers
+sentencepiece
+# Translation evaluation (chrF)
+sacrebleu
