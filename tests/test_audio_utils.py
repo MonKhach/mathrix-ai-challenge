@@ -4,7 +4,7 @@ import wave
 import numpy as np
 import pytest
 
-from app.audio_utils import TARGET_RATE, load_wav_16k, to_mono_16k
+from app.audio_utils import TARGET_RATE, StreamResampler, load_wav_16k, to_mono_16k
 
 
 def sine(freq, seconds, rate, amplitude=0.5):
@@ -82,3 +82,41 @@ def test_load_wav_like_our_recordings(tmp_path):
     out = load_wav_16k(path)
     assert len(out) == 16_000
     assert dominant_frequency(out, TARGET_RATE) == pytest.approx(440, abs=2)
+
+
+# --- StreamResampler (live audio arrives in ~10 ms chunks) ------------------------------
+
+def _stream(samples, chunk_sizes, rate=48_000, channels=2):
+    resampler = StreamResampler(rate, channels)
+    out, i, k = [], 0, 0
+    while i < len(samples):
+        size = chunk_sizes[k % len(chunk_sizes)] * channels
+        out.append(resampler.process(samples[i:i + size]))
+        i, k = i + size, k + 1
+    return np.concatenate(out)
+
+
+def test_stream_equals_whole_file_conversion_with_10_sample_delay():
+    rng = np.random.default_rng(0)
+    noise = (rng.standard_normal(48_000 * 2) * 3000).astype(np.int16)  # 1 s stereo
+    whole = to_mono_16k(noise, 48_000, 2)
+    streamed = _stream(noise, [480, 512, 333, 1024])  # uneven chunk sizes on purpose
+    n = len(whole) - 20
+    np.testing.assert_allclose(streamed[10:10 + n], whole[:n], atol=1e-5)
+
+
+def test_stream_result_does_not_depend_on_chunk_size():
+    tone = (sine(440, 0.5, 48_000) * 20000).astype(np.int16)
+    stereo = interleave(tone, tone)
+    np.testing.assert_allclose(_stream(stereo, [512]), _stream(stereo, [97, 1000]), atol=1e-6)
+
+
+def test_stream_removes_frequencies_above_8khz():
+    tone = (sine(10_000, 1.0, 48_000) * 32767).astype(np.int16)
+    out = _stream(interleave(tone, tone), [512])
+    assert np.sqrt(np.mean(out[100:] ** 2)) < 0.01
+
+
+def test_stream_rejects_44100_hz_loudly():
+    with pytest.raises(ValueError):
+        StreamResampler(44_100, 2)
