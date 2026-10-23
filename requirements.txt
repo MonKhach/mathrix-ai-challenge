@@ -1,0 +1,10 @@
+# Audio capture (Windows WASAPI incl. loopback)
+PyAudioWPatch
+numpy
+# Resampling 48 kHz -> 16 kHz
+scipy
+# ASR: NVIDIA FastConformer Armenian via ONNX
+onnx-asr[cpu,hub]
+# Evaluation
+jiwer
+pytest
