@@ -1,0 +1,35 @@
+# Python virtual environment
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Model weights / downloaded models (never commit)
+models/
+*.bin
+*.safetensors
+*.onnx
+*.pt
+*.pth
+*.ckpt
+*.nemo
+
+# Audio recordings (never commit)
+*.wav
+*.mp3
+*.m4a
+*.flac
+*.ogg
+*.webm
+
+# Secrets / tokens (never commit)
+.env
+*.key
+
+# Editor / OS files
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
