@@ -8,3 +8,5 @@ onnx-asr[cpu,hub]
 # Evaluation
 jiwer
 pytest
+# Benchmark: memory measurement
+psutil

@@ -36,6 +36,10 @@ def test_hyphen_keeps_one_word():
     assert normalize("մարտի 30-ին") == "մարտի 30ին"
 
 
+def test_armenian_hyphen_behaves_like_normal_hyphen():
+    assert normalize("Էյ այ\u058Aը") == normalize("Էյ այ-ը") == "էյ այը"
+
+
 def test_punctuation_without_space_still_separates_words():
     assert normalize("ձեզ,հետ") == "ձեզ հետ"
 

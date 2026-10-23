@@ -12,8 +12,8 @@ import unicodedata
 import jiwer
 
 # Armenian stress/exclamation/question marks are written *inside* a word (e.g. եկա՞վ),
-# and a hyphen joins one word (e.g. 30-ին). These are deleted without leaving a space.
-IN_WORD_MARKS = {"՛", "՜", "՞", "-"}  # ՛ ՜ ՞ -
+# and a hyphen (- or Armenian ֊) joins one word (e.g. 30-ին). These are deleted without leaving a space.
+IN_WORD_MARKS = {"\u055B", "\u055C", "\u055E", "-", "\u058A"}  # ՛ ՜ ՞, hyphen -, Armenian hyphen ֊
 
 
 def normalize(text: str) -> str:

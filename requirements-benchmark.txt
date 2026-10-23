@@ -1,0 +1,4 @@
+# Extra libraries only for the Whisper comparison in the ASR benchmark (not needed by the main program).
+# Install after requirements.txt:  pip install -r requirements-benchmark.txt
+torch
+transformers
