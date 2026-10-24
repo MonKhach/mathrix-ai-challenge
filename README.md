@@ -92,8 +92,8 @@ Measured on this laptop with my own evaluation set (19 clips: own voice + YouTub
 
 | | Result |
 |---|---|
-| Latency (end of phrase → English line) | live call with 2 friends on Google Meet, 5 min, 55 lines: **Me median 2.4 s (max 4.7)**, **call side median 2.1 s (max 3.6)** — target ≤ 5 s |
-| Memory | program ~1.8 GB (peak 1.93 GB); with Meet + camera the 8 GB laptop is at 90–96 % but stable |
+| Latency (end of phrase → English line) | two live calls with 2 friends on Google Meet (5 + 6 min, 120 lines): **median 2.1–2.8 s**; worst 4.7 s in the first, 5.3 / 5.8 s for 2 long phrases in the second (busy CPU) — target ≤ 5 s |
+| Memory | program 1.6–1.9 GB; with Meet + camera the 8 GB laptop is at 88–96 % but stable (sessions of up to 6 min tested) |
 | Offline | works with Wi-Fi off |
 | Robustness | silence on one side never blocks the other; translation loops prevented (worst 3.1 s instead of 28 s, D33); lost device → clear error |
 
@@ -104,6 +104,7 @@ Details and the full test list: [`TESTS.md`](TESTS.md).
 - **Recognition** is good on clear speech (mic WER 4.8 %) but much weaker on fast, natural call/podcast speech (~32–41 % WER). Proper names, rare and English/Russian words mixed into Armenian, and short colloquial words are often wrong. The model sometimes **doubles a syllable** (`Շատատ`, `դուրր`) — a property of the model, not of the audio path (D35). Splitting speech into phrases costs ~2 WER points at phrase boundaries.
 - **Translation** can be **fluent but wrong** ("In Lynn" above), and very short phrases lack context (`Այո` → "Yes, I did."). The Armenian line is always shown so the original can be checked.
 - **Speakers:** very short phrases are assigned to the closest known voice and can be wrong; noise or a short odd phrase can occasionally create an extra "Speaker N". Labels start over at every run.
+- **Latency** is usually 2–3 s, but when the CPU is busy (call app with camera, browser) a long phrase (7–10 s of speech) can take 5–6 s — 2 of 65 lines in a 6-minute rehearsal. Closing other heavy apps helps.
 - **Audio setup:** headphones are required. If they are unplugged, Windows plays the call through the laptop speakers and the microphone can pick it up as "Me"; the program stops with an error and must be restarted.
 - **Scope:** Eastern Armenian only; the evaluation set is small (19 clips + 2 recorded calls), so all numbers are indicative.
 

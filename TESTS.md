@@ -5,8 +5,8 @@ Status: ⬜ not run · ✅ pass · ❌ fail. Update the status and date when a c
 ## A. Required features (from the challenge brief)
 | # | Check | How | Status |
 |---|---|---|---|
-| A1 | Mic and system audio are captured **at the same time** | Run program, speak while a video/call plays → both sides appear | ⬜ (M1 capture test ✅ 2026-10-23) |
-| A2 | User can **choose input devices** | `--list` prints devices; `--mic` / `--system` select them; wrong device type fails with a clear error | ⬜ |
+| A1 | Mic and system audio are captured **at the same time** | Run program, speak while a video/call plays → both sides appear | ✅ 2026-10-24 friends' call: 22 Me + 35 call-side lines in one session (M1 capture test ✅ 2026-10-23) |
+| A2 | User can **choose input devices** | `--list` prints devices; `--mic` / `--system` select them; wrong device type fails with a clear error | ✅ 2026-10-24: `--mic`/`--system` used in every live run; wrong device type → clear `ValueError` naming `--list-devices` (3 unit tests, tests/test_audio_capture.py) |
 | A3 | Spoken Armenian → **Armenian text** | Live test + benchmark results | ✅ 2026-10-23 benchmark WER 23.8 % (mic 4.8 %, video 32.4 %); live M3 test OK |
 | A4 | Each segment → **English translation** | Live test: English line present and understandable | ✅ 2026-10-23 M3 live test (NLLB chrF 62.5) |
 | A5 | Mic is always labelled **Me** | Speak alone → only "Me" | ✅ 2026-10-23 M3 (single source) — recheck with both sources in M4 |
@@ -17,22 +17,22 @@ Status: ⬜ not run · ✅ pass · ❌ fail. Update the status and date when a c
 ## B. Constraints
 | # | Check | How | Status |
 |---|---|---|---|
-| B1 | Latency **≤ 5 s** from end of phrase to English line | Measured and logged per segment (median and worst case) | ✅ single source 2026-10-23: mic 1.1–1.3 s, YouTube 2.2–2.7 s. ✅ both sources 2026-10-24 (mic + 2-person podcast): Me 1.6 s, call side 3.2–3.3 s, max 3.3 s (5 phrases — repeat longer in rehearsal). ❌ 2026-10-24 live with Meet + fast podcast: phrases of 11–15 s → 4.8–7.1 s (no backlog, translation of long phrases) → D32 (0.15 s pause after 6 s, max 10 s). ✅ D32 confirmed live 2026-10-24 (Meet, 2 friends, 5 min, 55 lines): Me median 2.4 s / max 4.7 s; call side median 2.1 s, max 3.6 s except **one 28.9 s translation loop** → D33 (now max 3.1 s offline for that line; ⬜ recheck live) |
+| B1 | Latency **≤ 5 s** from end of phrase to English line | Measured and logged per segment (median and worst case) | ✅ single source 2026-10-23: mic 1.1–1.3 s, YouTube 2.2–2.7 s. ✅ both sources 2026-10-24 (mic + 2-person podcast): Me 1.6 s, call side 3.2–3.3 s, max 3.3 s (5 phrases — repeat longer in rehearsal). ❌ 2026-10-24 live with Meet + fast podcast: phrases of 11–15 s → 4.8–7.1 s (no backlog, translation of long phrases) → D32 (0.15 s pause after 6 s, max 10 s). ✅ D32 confirmed live 2026-10-24 (Meet, 2 friends, 5 min, 55 lines): Me median 2.4 s / max 4.7 s; call side median 2.1 s, max 3.6 s except **one 28.9 s translation loop** → D33 (now max 3.1 s offline for that line). ✅ rehearsal 2026-10-24 (Meet, 2 friends, 6 min, 65 lines): Me median 2.8 s, call side median 2.3 s, **no translation loops**; 2 lines at 5.3 s / 5.8 s (long 7–10 s phrases, every step ~1.5–2× slower than in the afternoon call → CPU busier, no backlog) → documented as a limitation, settings unchanged |
 | B2 | Runs **fully offline** (no cloud APIs) | Disconnect from the internet after models are downloaded → program still works | ✅ 2026-10-23 Wi-Fi off, mic source: models loaded, no HF warning, transcription + translation OK. ✅ 2026-10-24 recheck with all 4 models (Wi-Fi off, mic + local recordings on the call side): no network warning, transcription, translation and speaker labels OK |
-| B3 | Fits in **8 GB RAM** while a call app is running | Task Manager during a live test + program's own memory report (`[memory, …]` lines, `app/memory.py`) | ⚠️ fits but tight, 2026-10-24 (fp32, Meet with camera + YouTube): program 1.7–1.9 GB (peak 1.93 GB), PC 0.3–0.8 GB available (90–96 % used), commit charge 13.1 / 14.3 GB, no crash. Closing other apps did not help (Chrome/Meet grew to 1.1 GB). 5-min friends' call: program 1.73–1.77 GB (peak 1.82 GB), stable, PC 0.3–0.7 GB available. **fp32 kept** (D17); ⬜ recheck in a ~30 min rehearsal |
-| B4 | No paid tools/services used | Review dependencies list | ⬜ |
-| B5 | Runs on **this laptop** (Windows 11, CPU only) | Full rehearsal before the interview | ⬜ |
+| B3 | Fits in **8 GB RAM** while a call app is running | Task Manager during a live test + program's own memory report (`[memory, …]` lines, `app/memory.py`) | ⚠️ fits but tight, 2026-10-24 (fp32, Meet with camera + YouTube): program 1.7–1.9 GB (peak 1.93 GB), PC 0.3–0.8 GB available (90–96 % used), commit charge 13.1 / 14.3 GB, no crash. Closing other apps did not help (Chrome/Meet grew to 1.1 GB). 5-min friends' call: program 1.73–1.77 GB (peak 1.82 GB), stable, PC 0.3–0.7 GB available. **fp32 kept** (D17). ✅ rehearsal 2026-10-24 (6 min): program 1.34 → 1.58 GB, flat after minute 4, PC 0.6–0.9 GB available. A 30-min session was not run |
+| B4 | No paid tools/services used | Review dependencies list | ✅ 2026-10-24: all packages in requirements*.txt are free open-source (PyPI); all models free downloads; no API keys. Note: NLLB is non-commercial (CC-BY-NC-4.0, D22) |
+| B5 | Runs on **this laptop** (Windows 11, CPU only) | Full rehearsal before the interview | ✅ 2026-10-24: 6-min rehearsal with 2 friends on Meet, full program, no errors; speaker labels correct (confirmed by user); fragment rule (D31) hid 3 × `Հովհ.`. Planned 30 min not possible |
 
 ## C. Text normalization (D11) — the scoring itself must be correct
 | # | Input | Expected output | Status |
 |---|---|---|---|
-| C1 | `քեզ դուր եկա՞վ։` | `քեզ դուր եկավ` | ⬜ |
-| C2 | `Ողջույն, ինչ ուրախ եմ։` | `ողջույն ինչ ուրախ եմ` | ⬜ |
-| C3 | `սիրելի ռադիունկնդիրներ և դիտողներ` | `սիրելի ռադիունկնդիրներ եւ դիտողներ` | ⬜ |
-| C4 | `ենք   ու` (extra spaces) | `ենք ու` | ⬜ |
-| C5 | `թանկացել ա` (colloquial) | unchanged: `թանկացել ա` | ⬜ |
-| C6 | `30 տարեկան` (digits) | unchanged: `30 տարեկան` | ⬜ |
-| C7 | WER of identical texts = 0; WER of `քեզ դուր էր եկել` vs ref `քեզ դուր եկա՞վ։` > 0 | | ⬜ |
+| C1 | `քեզ դուր եկա՞վ։` | `քեզ դուր եկավ` | ✅ unit test (tests/test_metrics.py) |
+| C2 | `Ողջույն, ինչ ուրախ եմ։` | `ողջույն ինչ ուրախ եմ` | ✅ unit test (tests/test_metrics.py) |
+| C3 | `սիրելի ռադիունկնդիրներ և դիտողներ` | `սիրելի ռադիունկնդիրներ եւ դիտողներ` | ✅ unit test (tests/test_metrics.py) |
+| C4 | `ենք   ու` (extra spaces) | `ենք ու` | ✅ unit test (tests/test_metrics.py) |
+| C5 | `թանկացել ա` (colloquial) | unchanged: `թանկացել ա` | ✅ unit test (tests/test_metrics.py) |
+| C6 | `30 տարեկան` (digits) | unchanged: `30 տարեկան` | ✅ unit test (tests/test_metrics.py) |
+| C7 | WER of identical texts = 0; WER of `քեզ դուր էր եկել` vs ref `քեզ դուր եկա՞վ։` > 0 | | ✅ unit test (tests/test_metrics.py) |
 
 ## D. Evaluation set
 | # | Check | Status |
@@ -46,7 +46,7 @@ Status: ⬜ not run · ✅ pass · ❌ fail. Update the status and date when a c
 | E1 | Very long phrase without a pause is cut at the maximum length, not lost | ✅ unit test (tests/test_vad.py); ✅ replay of podcast_long_02 (D32): cut at 10 s, nothing lost, but a word can be split at the cut |
 | E4 | Translation never loops / runs away ("you want to go" ×50) | ✅ 2026-10-24 D33: 0 loops in 132 lines, worst 3.1 s; real repetitions kept (`evaluation/translation_settings.py`) |
 | E2 | Silence on one source does not block the other source | ✅ 2026-10-24: call side silent → Me lines 1.5–1.6 s; mic silent → call-side lines 2.2–2.6 s |
-| E3 | Unplugging/replugging headphones: clear error, documented in README | ❌ 2026-10-24 before fix: call side went **silent with no message**, stayed dead after replugging (mic kept working). ✅ after D34: `ERROR: Audio device stopped: Headphones … restart the program` right after unplugging, program exits (4 unit tests). ⬜ README |
+| E3 | Unplugging/replugging headphones: clear error, documented in README | ❌ 2026-10-24 before fix: call side went **silent with no message**, stayed dead after replugging (mic kept working). ✅ after D34: `ERROR: Audio device stopped: Headphones … restart the program` right after unplugging, program exits (4 unit tests). ✅ README (Usage + Known limitations) |
 
 ## F. Before every commit
 - `git status` → no `.wav`, model files, `.venv` or secrets listed.
@@ -70,3 +70,4 @@ Status: ⬜ not run · ✅ pass · ❌ fail. Update the status and date when a c
 | 2026-10-24 | Headphones unplugged → Windows plays the call through the laptop speakers, so the mic can pick up the other side (would appear as "Me"); after replugging, the call app may keep using the speakers → set its output back to the headphones (README) |
 | 2026-10-24 | Speech model sometimes doubles a syllable or letter (`Շատատ`, `դուրր`, `գործործը`), more often on fast/call audio; not caused by our audio path (D35, `results/asr_paths.md`) |
 | 2026-10-24 | Splitting speech into phrases costs ~2 WER points: words at a phrase boundary are recognised slightly worse (`հանդիպել` → `հանդիպեք`) — the price of showing text phrase by phrase (D35) |
+| 2026-10-24 | When the CPU is busy (call app, browser), long phrases (7–10 s) can take 5–6 s instead of 2–4 s (rehearsal: 2 of 65 lines over 5 s) |
