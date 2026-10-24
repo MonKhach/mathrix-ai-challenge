@@ -24,7 +24,7 @@ os.environ["HF_HUB_OFFLINE"] = "1"  # models must already be downloaded (python 
 
 from app.audio_capture import CHUNK_SIZE  # noqa: E402
 from app.audio_utils import TARGET_RATE, StreamResampler  # noqa: E402
-from app.main import add_pipeline_arguments, load_models, print_segment  # noqa: E402
+from app.main import add_pipeline_arguments, load_models, segment_text, use_utf8_output  # noqa: E402
 from app.pipeline import SHORT_RULES, Pipeline  # noqa: E402
 from app.vad import PhraseDetector, SileroModel  # noqa: E402
 
@@ -91,6 +91,7 @@ def sweep(phrases, embedder, short_seconds, out_name):
 
 def main():
     faulthandler.enable()
+    use_utf8_output()
     parser = argparse.ArgumentParser(description="Replay recordings through the live pipeline.")
     parser.add_argument("--system", type=Path, help="recording of the call side (system audio)")
     parser.add_argument("--mic", type=Path, help="recording of the microphone")
@@ -120,7 +121,7 @@ def main():
     for phrase in phrases:
         segment = pipeline.process(phrase)
         labels[segment.label] += 1
-        print_segment(segment, phrase.start_time, latency=False, debug=True)
+        print(segment_text(segment, phrase.start_time, latency=False, debug=True), flush=True)
         if segment.confidence is not None:
             ranking.append((segment.confidence, len(phrase.audio) / 16_000, segment.label,
                             segment.armenian))

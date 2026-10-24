@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 
-from app.pipeline import Pipeline
+from app.pipeline import Pipeline, is_abbreviation_only
 from app.vad import Phrase
 
 VOICE_A = np.array([1.0, 0.0, 0.0], dtype=np.float32)
@@ -14,7 +14,9 @@ class FakeASR:
         if audio[0] == 9:
             return "", None                # first sample 9 -> nothing recognised
         if audio[0] == 7:
-            return "Հ.", 0.2               # first sample 7 -> low-confidence fragment
+            return "Բարև", 0.2             # first sample 7 -> low-confidence phrase
+        if audio[0] == 5:
+            return "Հովհ.", 0.95           # first sample 5 -> confident abbreviation artifact
         return "բարև", 0.9
 
 
@@ -92,7 +94,7 @@ def test_low_confidence_phrase_is_unclear_not_translated_and_no_speaker():
     p = Pipeline(FakeASR(), FakeTranslator(), FakeEmbedder(), 0.4, 1.5, "assign",
                  min_confidence=0.5)
     segment = p.process(phrase("system", 7, 3.0))
-    assert segment.unclear and segment.english == "" and segment.armenian == "Հ."
+    assert segment.unclear and segment.english == "" and segment.armenian == "Բարև"
     assert p.tracker.speaker_count == 0
     assert not p.process(phrase("system", 1, 3.0)).unclear   # confidence 0.9 passes
 
@@ -100,3 +102,25 @@ def test_low_confidence_phrase_is_unclear_not_translated_and_no_speaker():
 def test_unknown_rule_name_fails_loudly():
     with pytest.raises(ValueError):
         Pipeline(FakeASR(), FakeTranslator(), FakeEmbedder(), 0.4, 1.5, "maybe")
+
+
+def test_abbreviation_detection():
+    assert is_abbreviation_only("Հովհ.")
+    assert is_abbreviation_only("Հ.")
+    assert is_abbreviation_only(" Հովհ. Հ. ")
+    assert not is_abbreviation_only("Այո։")                 # Armenian full stop: real speech
+    assert not is_abbreviation_only("Ես չեմ սիրում։")
+    assert not is_abbreviation_only("Հովհ. Թումանյանը")      # abbreviation + real word
+    assert not is_abbreviation_only("Այո")
+
+
+def test_abbreviation_artifact_is_unclear_even_with_high_confidence():
+    p = pipeline()
+    segment = p.process(phrase("system", 5, 1.0))
+    assert segment.unclear and segment.english == "" and segment.armenian == "Հովհ."
+    assert p.tracker.speaker_count == 0
+
+
+def test_abbreviation_artifact_on_mic_stays_me_but_unclear():
+    segment = pipeline().process(phrase("mic", 5, 1.0))
+    assert segment.unclear and segment.label == "Me"

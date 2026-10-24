@@ -12,7 +12,9 @@ import argparse
 import faulthandler
 import os
 import queue
+import sys
 import time
+from datetime import datetime
 
 from app.output import format_segment, format_timestamp
 from app.pipeline import SHORT_RULES, Pipeline
@@ -58,28 +60,37 @@ def load_models():
     return asr, translator, embedder
 
 
-def print_segment(segment, offset, latency=True, debug=False):
+def use_utf8_output():
+    """Armenian text must never crash printing. On Windows, output redirected to a pipe or file
+    otherwise uses the old cp1252 encoding, which has no Armenian letters (D30)."""
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+
+
+def segment_text(segment, offset, latency=True, debug=False) -> str:
     """offset: seconds since the start of the session (live) or of the recording (replay)."""
     if segment.unclear:
         heard = f": '{segment.armenian}'" if segment.armenian else ""
         conf = f", confidence {segment.confidence:.2f}" if segment.confidence is not None else ""
-        print(f"[{format_timestamp(offset)}] {segment.label}   (unclear sound{heard}{conf})\n",
-              flush=True)
-        return
-    print(format_segment(offset, segment.label, segment.armenian, segment.english,
-                         latency_s=segment.finished_at - segment.end_time if latency else None,
-                         similarity=segment.similarity if debug else None,
-                         confidence=segment.confidence if debug else None), flush=True)
+        return f"[{format_timestamp(offset)}] {segment.label}   (unclear sound{heard}{conf})\n"
+    return format_segment(offset, segment.label, segment.armenian, segment.english,
+                          latency_s=segment.finished_at - segment.end_time if latency else None,
+                          similarity=segment.similarity if debug else None,
+                          confidence=segment.confidence if debug else None)
 
 
 def main():
     faulthandler.enable()
+    use_utf8_output()
     parser = argparse.ArgumentParser(description="Live Armenian -> English transcription.")
     parser.add_argument("--download", action="store_true",
                         help="download all models once (needs internet), then exit")
     parser.add_argument("--list-devices", action="store_true", help="list recording devices and exit")
     parser.add_argument("--mic", type=int, help="microphone device index (labelled 'Me')")
     parser.add_argument("--system", type=int, help="system-audio loopback device index (the call)")
+    parser.add_argument("--log", type=str,
+                        help="also append the transcript to this UTF-8 file, e.g. "
+                             "private/session.txt (private/ is git-ignored)")
     add_pipeline_arguments(parser)
     args = parser.parse_args()
 
@@ -104,6 +115,14 @@ def main():
         if not sources:
             parser.error("give --mic and/or --system (see --list-devices)")
 
+        log = open(args.log, "a", encoding="utf-8") if args.log else None
+
+        def emit(text):
+            print(text, flush=True)
+            if log:
+                log.write(text + "\n")
+                log.flush()
+
         asr, translator, embedder = load_models()
         pipeline = Pipeline(asr, translator, embedder, args.speaker_threshold,
                             args.short_seconds, args.short_rule, args.min_confidence)
@@ -113,19 +132,19 @@ def main():
         overflows_reported = {c.source: 0 for c in captures}
         session_start = time.monotonic()
 
-        print()
+        emit(f"\n=== Session {datetime.now():%Y-%m-%d %H:%M:%S} ===")
         for c in captures:
-            print(f"Listening to {c.name} ({'Me' if c.source == 'mic' else 'call side'})")
-        print(f"Speaker settings: threshold {args.speaker_threshold}, short phrases "
-              f"< {args.short_seconds} s -> rule '{args.short_rule}', min confidence "
-              f"{args.min_confidence}. Press Ctrl+C to stop.\n")
+            emit(f"Listening to {c.name} ({'Me' if c.source == 'mic' else 'call side'})")
+        emit(f"Speaker settings: threshold {args.speaker_threshold}, short phrases "
+             f"< {args.short_seconds} s -> rule '{args.short_rule}', min confidence "
+             f"{args.min_confidence}. Press Ctrl+C to stop.\n")
         try:
             while True:
                 for c in captures:
                     c.raise_if_failed()
                     if c.overflows > overflows_reported[c.source]:
-                        print(f"WARNING: {c.overflows - overflows_reported[c.source]} audio "
-                              f"overflow(s) on {c.name} - some audio was lost")
+                        emit(f"WARNING: {c.overflows - overflows_reported[c.source]} audio "
+                             f"overflow(s) on {c.name} - some audio was lost")
                         overflows_reported[c.source] = c.overflows
 
                 phrases = []
@@ -141,13 +160,15 @@ def main():
                     phrases += detector.on_idle(now)
 
                 for phrase in sorted(phrases, key=lambda p: p.end_time):
-                    print_segment(pipeline.process(phrase), phrase.start_time - session_start,
-                                  debug=args.debug)
+                    emit(segment_text(pipeline.process(phrase), phrase.start_time - session_start,
+                                      debug=args.debug))
         except KeyboardInterrupt:
-            print("\nStopped.")
+            emit("Stopped.")
         finally:
             for c in captures:
                 c.close()
+            if log:
+                log.close()
 
 
 if __name__ == "__main__":

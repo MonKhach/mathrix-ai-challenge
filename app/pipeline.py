@@ -3,6 +3,7 @@
 
 phrase -> Armenian text (ASR) -> English (translation) -> speaker label -> Segment
 """
+import re
 import time
 from dataclasses import dataclass
 
@@ -10,6 +11,15 @@ from app.audio_utils import TARGET_RATE
 from app.speakers import SpeakerTracker
 
 SHORT_RULES = ("assign", "unknown", "none")
+
+# The ASR model outputs abbreviations such as "Հովհ." or "Հ." (letters + plain ".") for breaths,
+# "hm" and similar non-speech sounds - with HIGH confidence (D29, D31). Real sentences end with the
+# Armenian full stop "։". A text made ONLY of such abbreviations is treated as an unclear sound.
+_ABBREVIATIONS_ONLY = re.compile(r"^(?:[\u0531-\u0587]+\.\s*)+$")
+
+
+def is_abbreviation_only(text: str) -> bool:
+    return bool(_ABBREVIATIONS_ONLY.match(text.strip()))
 
 
 @dataclass
@@ -55,8 +65,8 @@ class Pipeline:
         armenian = armenian.strip()
         too_unsure = (self._min_confidence is not None and confidence is not None
                       and confidence < self._min_confidence)
-        if not armenian or too_unsure:
-            # Noise, breath, "hm"...: not translated, and it may not create or change a speaker.
+        if not armenian or too_unsure or is_abbreviation_only(armenian):
+            # Noise, breath, "hm"...: shown as unclear, not translated, no speaker change.
             label = "Me" if phrase.source == "mic" else "(unknown)"
             return Segment(phrase.source, label, armenian, "", phrase.start_time, phrase.end_time,
                            clock(), None, confidence, unclear=True)

@@ -10,14 +10,14 @@ Status: ⬜ not run · ✅ pass · ❌ fail. Update the status and date when a c
 | A3 | Spoken Armenian → **Armenian text** | Live test + benchmark results | ✅ 2026-10-23 benchmark WER 23.8 % (mic 4.8 %, video 32.4 %); live M3 test OK |
 | A4 | Each segment → **English translation** | Live test: English line present and understandable | ✅ 2026-10-23 M3 live test (NLLB chrF 62.5) |
 | A5 | Mic is always labelled **Me** | Speak alone → only "Me" | ✅ 2026-10-23 M3 (single source) — recheck with both sources in M4 |
-| A6 | Call side: different people → **Speaker 1, Speaker 2…** | Test call with ≥ 2 friends | ⬜ |
-| A7 | Same person keeps the **same label** all session | ≥ 5 min call, each person speaks several times | ⬜ |
+| A6 | Call side: different people → **Speaker 1, Speaker 2…** | Test call with ≥ 2 friends | ✅ 2026-10-24 two-speaker test (friend A, friend B through Meet): A vs B similarity ≤ 0.26, **0 merges** at all thresholds; conversation replay: A = Speaker 1, B = Speaker 2, confirmed by user. ⬜ live with 2 friends |
+| A7 | Same person keeps the **same label** all session | ≥ 5 min call, each person speaks several times | ✅ replays 2026-10-24 (call 1: 28 phrases one label; call 2: labels consistent). ⚠️ one outlier phrase of friend A (similarity −0.02) under investigation |
 | A8 | Output shows **time, speaker, Armenian, English** | Visual check of terminal | ✅ 2026-10-23 M3 |
 
 ## B. Constraints
 | # | Check | How | Status |
 |---|---|---|---|
-| B1 | Latency **≤ 5 s** from end of phrase to English line | Measured and logged per segment (median and worst case) | ✅ single source 2026-10-23: mic 1.1–1.3 s, YouTube 2.2–2.7 s. ⬜ both sources at once (M4) |
+| B1 | Latency **≤ 5 s** from end of phrase to English line | Measured and logged per segment (median and worst case) | ✅ single source 2026-10-23: mic 1.1–1.3 s, YouTube 2.2–2.7 s. ✅ both sources 2026-10-24 (mic + 2-person podcast): Me 1.6 s, call side 3.2–3.3 s, max 3.3 s (5 phrases — repeat longer in rehearsal) |
 | B2 | Runs **fully offline** (no cloud APIs) | Disconnect from the internet after models are downloaded → program still works | ✅ 2026-10-23 Wi-Fi off, mic source: models loaded, no HF warning, transcription + translation OK. ⬜ recheck after speaker model is added |
 | B3 | Fits in **8 GB RAM** while a call app is running | Task Manager during a live test | ⬜ |
 | B4 | No paid tools/services used | Review dependencies list | ⬜ |
