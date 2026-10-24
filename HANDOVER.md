@@ -12,9 +12,9 @@ microphone ("Me") + system audio (call side), transcribes **Eastern Armenian**, 
 no paid tools**. Deadline **2026-11-01 23:59 (Yerevan)**. Interview: live call with ≥ 2 people on
 the call side, code walk-through, original chat history.
 
-## State: M1–M5 done, M6 almost done
+## State: M1–M6 done
 Code, README and all tests are on GitHub (`MonKhach/mathrix-ai-challenge`, branch `master`).
-Every TESTS.md row is ✅ (B3 RAM: fits but tight). **Only open item: send the chats by e-mail (below).**
+Every TESTS.md row is ✅ (B3 RAM: fits but tight). Chats are sent by e-mail (below).
 
 Pipeline (one loop, D25): WASAPI capture (PyAudioWPatch) → StreamResampler 48 kHz stereo → 16 kHz
 mono → Silero VAD phrases (end after 0.6 s silence; after 6 s a 0.15 s pause ends the phrase;
@@ -57,11 +57,11 @@ Git from PowerShell: one command per line (`git commit …` and `git push` on on
   then decide), known limitations (README).
 
 ## Open
-1. **Chats are sent to the reviewers by e-mail, not committed** (they contain the friends' calls;
-   the friends agreed). At the very end: new export (Settings → Privacy → Export data), save
-   `conversations-000.zip` in `private/`, then
-   `python scripts/export_chats.py private/conversations-000.zip "Speech recognition coding challenge prep=01-session-M1-M4" "M5 project handover=02-session-M5-M6"`
-   → `private/chats/*.md` (complete, unchanged; e-mail account field left out). Attach both files.
+None. **Chats were exported on 2026-10-24** (claude.ai export of 19:58 Yerevan time, covering all
+project work) and converted with `scripts/export_chats.py` into `private/chats/01-session-M1-M4.md`
+and `private/chats/02-session-M5-M6.md` (complete, unchanged; e-mail account field left out). They
+are sent to the reviewers by e-mail, not committed (they contain the friends' calls; the friends
+agreed).
 
 ## Never commit
 `eval/audio/` recordings, `models/`, `.venv/`, `private/` transcripts and logs, keys/tokens.
