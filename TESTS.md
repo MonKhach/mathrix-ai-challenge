@@ -62,3 +62,5 @@ Status: ⬜ not run · ✅ pass · ❌ fail. Update the status and date when a c
 | 2026-10-24 | Very short phrases translate poorly without context (`Այո` → "Yes, I did."; `Եվ` → "And then.") |
 | 2026-10-24 | Breaths/"hm" recognised as fragments (`Հ.`, `Հովհ.`) and translated into invented sentences → D29 confidence filter |
 | 2026-10-24 | No duplicated lines between Me and the call side with headphones (D3 works) |
+| 2026-10-24 | Short colloquial words/interjections (e.g. `մամ`) are merged into a neighbouring word — rare in the ASR training data |
+| 2026-10-24 | Noise before speech (friend's mic problem) gives a fingerprint unlike any voice (similarity −0.02); live pipeline only lets phrases with real text create speakers, but noise transcribed as a word could still create an extra speaker |
