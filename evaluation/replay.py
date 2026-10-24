@@ -24,7 +24,8 @@ os.environ["HF_HUB_OFFLINE"] = "1"  # models must already be downloaded (python 
 
 from app.audio_capture import CHUNK_SIZE  # noqa: E402
 from app.audio_utils import TARGET_RATE, StreamResampler  # noqa: E402
-from app.main import add_pipeline_arguments, load_models, segment_text, use_utf8_output  # noqa: E402
+from app.main import (add_pipeline_arguments, load_models, phrase_settings,  # noqa: E402
+                      segment_text, use_utf8_output)
 from app.pipeline import SHORT_RULES, Pipeline  # noqa: E402
 from app.vad import PhraseDetector, SileroModel  # noqa: E402
 
@@ -41,14 +42,15 @@ def read_wav(path):
     return samples, rate, channels
 
 
-def detect_phrases(files):
-    """files: {"mic": path, "system": path}. Returns phrases of all sources, ordered by end time."""
+def detect_phrases(files, settings=None):
+    """files: {"mic": path, "system": path}; settings: PhraseDetector keyword arguments.
+    Returns phrases of all sources, ordered by end time."""
     streams = {}
     for source, path in files.items():
         samples, rate, channels = read_wav(path)
         streams[source] = dict(samples=samples, rate=rate, channels=channels, pos=0,
                                resampler=StreamResampler(rate, channels),
-                               detector=PhraseDetector(source, SileroModel()))
+                               detector=PhraseDetector(source, SileroModel(), **(settings or {})))
     phrases, end_time = [], 0.0
     while any(s["pos"] < len(s["samples"]) for s in streams.values()):
         for s in streams.values():
@@ -108,7 +110,9 @@ def main():
 
     asr, translator, embedder = load_models()
     print("Detecting phrases...")
-    phrases = detect_phrases(files)
+    print(f"Phrase settings: max {args.max_phrase} s, shorter pause {args.soft_silence} s after "
+          f"{args.soft_after} s (0 = off)")
+    phrases = detect_phrases(files, phrase_settings(args))
     print(f"{len(phrases)} phrases found\n")
 
     if args.sweep:
@@ -117,15 +121,20 @@ def main():
 
     pipeline = Pipeline(asr, translator, embedder, args.speaker_threshold,
                         args.short_seconds, args.short_rule, args.min_confidence)
-    labels, ranking = Counter(), []
+    labels, ranking, lengths, processing = Counter(), [], [], []
     for phrase in phrases:
         segment = pipeline.process(phrase)
         labels[segment.label] += 1
+        lengths.append(phrase.end_time - phrase.start_time)
+        processing.append(sum(segment.step_times.values()))
         print(segment_text(segment, phrase.start_time, latency=False, debug=True), flush=True)
         if segment.confidence is not None:
             ranking.append((segment.confidence, len(phrase.audio) / 16_000, segment.label,
                             segment.armenian))
     print("Labels: " + ", ".join(f"{k}: {v}" for k, v in sorted(labels.items())))
+    print(f"Phrase length: median {np.median(lengths):.1f} s, max {max(lengths):.1f} s | "
+          f"processing (asr+translate+speaker): median {np.median(processing):.1f} s, "
+          f"max {max(processing):.1f} s")
     print("\nRecognition confidence, lowest first (to choose --min-confidence, D29):")
     for confidence, seconds, label, text in sorted(ranking):
         print(f"  {confidence:.2f}  {seconds:4.1f} s  {label:10}  {text[:60]}")

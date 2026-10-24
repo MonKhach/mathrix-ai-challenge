@@ -3,9 +3,14 @@
 SileroModel     : 32 ms of 16 kHz audio -> probability that it contains speech.
 PhraseDetector  : feeds audio frame by frame and returns finished phrases.
 
-A phrase ends after END_SILENCE_S of silence, is cut at MAX_PHRASE_S, and is dropped if it
+A phrase ends after END_SILENCE_S of silence, is cut at max_phrase_s, and is dropped if it
 contains less than MIN_PHRASE_S of speech. PRE_ROLL_S of audio before the speech start is kept
 so the first syllable is not lost.
+
+Long phrases (M5): once a phrase is longer than soft_after_s, a shorter pause (soft_silence_s,
+e.g. a breath) is enough to end it. Speakers who barely pause then get shorter phrases that end
+at natural breaks, so translation is faster and text appears sooner. soft_after_s=None = off
+(D32).
 """
 from collections import deque
 from dataclasses import dataclass
@@ -19,7 +24,9 @@ CONTEXT = 64         # samples of the previous frame the model also sees, requir
 THRESHOLD = 0.5      # probability >= 0.5 -> speech starts
 NEG_THRESHOLD = 0.35 # probability < 0.35 -> counts as silence (hysteresis, as in onnx-asr)
 END_SILENCE_S = 0.6
-MAX_PHRASE_S = 15.0
+MAX_PHRASE_S = 10.0    # D32 (was 15 s)
+SOFT_AFTER_S = 6.0     # D32: phrases longer than this end at a SOFT_SILENCE_S pause
+SOFT_SILENCE_S = 0.15  # D32: about the gap between words
 MIN_PHRASE_S = 0.3
 PRE_ROLL_S = 0.2
 TAIL_KEEP_S = 0.1    # silence kept after the last speech frame
@@ -62,10 +69,18 @@ class SileroModel:
 
 
 class PhraseDetector:
-    def __init__(self, source: str, speech_prob):
+    def __init__(self, source: str, speech_prob, max_phrase_s: float = MAX_PHRASE_S,
+                 soft_after_s: float | None = SOFT_AFTER_S, soft_silence_s: float = SOFT_SILENCE_S):
         """speech_prob: function(512-sample frame) -> probability (SileroModel, or a fake in tests)."""
+        if soft_after_s is not None and not soft_silence_s < END_SILENCE_S:
+            raise ValueError(f"soft_silence_s must be shorter than {END_SILENCE_S} s")
+        if soft_after_s is not None and not soft_after_s < max_phrase_s:
+            raise ValueError("soft_after_s must be shorter than max_phrase_s")
         self.source = source
         self._speech_prob = speech_prob
+        self._max_frames = _frames(max_phrase_s)
+        self._soft_after_frames = None if soft_after_s is None else _frames(soft_after_s)
+        self._soft_silence_frames = _frames(soft_silence_s)
         self._buffer = np.zeros(0, dtype=np.float32)
         self._pre_roll = deque(maxlen=_frames(PRE_ROLL_S))
         self._in_phrase = False
@@ -85,8 +100,8 @@ class PhraseDetector:
 
     def on_idle(self, now: float) -> list[Phrase]:
         """Called when no audio arrives. WASAPI loopback sends nothing while nothing plays,
-        so a phrase would never 'see' its ending silence; we end it after END_SILENCE_S of no audio."""
-        if self._in_phrase and now - self._last_audio_time >= END_SILENCE_S:
+        so a phrase would never 'see' its ending silence; we end it after the same silence of no audio."""
+        if self._in_phrase and (now - self._last_audio_time) * TARGET_RATE / FRAME >= self._end_silence_frames():
             phrase = self._finish(trailing_silence=self._silent_frames)
             return [phrase] if phrase is not None else []
         return []
@@ -107,13 +122,19 @@ class PhraseDetector:
         else:
             self._silent_frames += 1
 
-        if self._silent_frames >= _frames(END_SILENCE_S):
+        if self._silent_frames >= self._end_silence_frames():
             return self._finish(trailing_silence=self._silent_frames)
-        if len(self._frames) >= _frames(MAX_PHRASE_S):
+        if len(self._frames) >= self._max_frames:
             phrase = self._finish(trailing_silence=0)
             self._start(t, [])  # speaker is still talking: continue in a new phrase
             return phrase
         return None
+
+    def _end_silence_frames(self) -> int:
+        """Silence (in frames) that ends the current phrase: shorter once the phrase is long."""
+        if self._soft_after_frames is not None and len(self._frames) >= self._soft_after_frames:
+            return self._soft_silence_frames
+        return _frames(END_SILENCE_S)
 
     def _start(self, t: float, frames: list):
         self._in_phrase = True

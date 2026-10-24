@@ -20,6 +20,7 @@ from app.memory import memory_line
 from app.output import format_segment, format_timestamp
 from app.pipeline import SHORT_RULES, Pipeline
 from app.speakers import SHORT_PHRASE_S, SHORT_RULE, SIMILARITY_THRESHOLD
+from app.vad import MAX_PHRASE_S, SOFT_AFTER_S, SOFT_SILENCE_S
 
 MEMORY_REPORT_EVERY_S = 60  # with --debug (TESTS.md B3)
 
@@ -35,9 +36,22 @@ def add_pipeline_arguments(parser):
     parser.add_argument("--min-confidence", type=float, default=None,
                         help="phrases with lower recognition confidence are shown as unclear "
                              "and not translated (default: off, D29)")
+    parser.add_argument("--max-phrase", type=float, default=MAX_PHRASE_S,
+                        help=f"longest phrase in seconds before it is cut (default {MAX_PHRASE_S})")
+    parser.add_argument("--soft-after", type=float, default=SOFT_AFTER_S,
+                        help="phrases longer than this many seconds end at a shorter pause "
+                             f"(default {SOFT_AFTER_S}; 0 = off)")
+    parser.add_argument("--soft-silence", type=float, default=SOFT_SILENCE_S,
+                        help=f"that shorter pause in seconds (default {SOFT_SILENCE_S})")
     parser.add_argument("--debug", action="store_true",
                         help="also show speaker similarity and recognition confidence "
                              "(live: also memory use every 60 s)")
+
+
+def phrase_settings(args) -> dict:
+    """Phrase-length settings for PhraseDetector, from the command line."""
+    return dict(max_phrase_s=args.max_phrase, soft_after_s=args.soft_after or None,
+                soft_silence_s=args.soft_silence)
 
 
 def load_models():
@@ -139,7 +153,8 @@ def main():
         asr, translator, embedder = load_models()
         pipeline = Pipeline(asr, translator, embedder, args.speaker_threshold,
                             args.short_seconds, args.short_rule, args.min_confidence)
-        detectors = {name: PhraseDetector(name, SileroModel()) for name in sources}
+        detectors = {name: PhraseDetector(name, SileroModel(), **phrase_settings(args))
+                     for name in sources}
         chunks = queue.Queue()
         captures = [AudioCapture(pa, index, name, chunks) for name, index in sources.items()]
         overflows_reported = {c.source: 0 for c in captures}
@@ -151,7 +166,9 @@ def main():
             emit(f"Listening to {c.name} ({'Me' if c.source == 'mic' else 'call side'})")
         emit(f"Speaker settings: threshold {args.speaker_threshold}, short phrases "
              f"< {args.short_seconds} s -> rule '{args.short_rule}', min confidence "
-             f"{args.min_confidence}. Press Ctrl+C to stop.")
+             f"{args.min_confidence}.")
+        emit(f"Phrase settings: max {args.max_phrase} s, shorter pause {args.soft_silence} s after "
+             f"{args.soft_after} s (0 = off). Press Ctrl+C to stop.")
         emit(memory_line("models loaded") + "\n")
         try:
             while True:
