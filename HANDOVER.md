@@ -14,7 +14,7 @@ the call side, code walk-through, original chat history.
 
 ## State: M1–M5 done, M6 almost done
 Code, README and all tests are on GitHub (`MonKhach/mathrix-ai-challenge`, branch `master`).
-Every TESTS.md row is ✅ (B3 RAM: fits but tight). **Only open item: export the chats (below).**
+Every TESTS.md row is ✅ (B3 RAM: fits but tight). **Only open item: send the chats by e-mail (below).**
 
 Pipeline (one loop, D25): WASAPI capture (PyAudioWPatch) → StreamResampler 48 kHz stereo → 16 kHz
 mono → Silero VAD phrases (end after 0.6 s silence; after 6 s a 0.15 s pause ends the phrase;
@@ -57,8 +57,11 @@ Git from PowerShell: one command per line (`git commit …` and `git push` on on
   then decide), known limitations (README).
 
 ## Open
-1. **Export every Cowork chat in full** (session 1 and session 2), each as its own `.md` in
-   `chats/`; check for private content, commit and push. Keep the originals available.
+1. **Chats are sent to the reviewers by e-mail, not committed** (they contain the friends' calls;
+   the friends agreed). At the very end: new export (Settings → Privacy → Export data), save
+   `conversations-000.zip` in `private/`, then
+   `python scripts/export_chats.py private/conversations-000.zip "Speech recognition coding challenge prep=01-session-M1-M4" "M5 project handover=02-session-M5-M6"`
+   → `private/chats/*.md` (complete, unchanged; e-mail account field left out). Attach both files.
 
 ## Never commit
 `eval/audio/` recordings, `models/`, `.venv/`, `private/` transcripts and logs, keys/tokens.
