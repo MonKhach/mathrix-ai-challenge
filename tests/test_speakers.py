@@ -56,3 +56,16 @@ def test_threshold_decides_merge_or_split():
 def test_zero_vector_fails_loudly():
     with pytest.raises(ValueError):
         SpeakerTracker(0.6).assign(np.zeros(3, dtype=np.float32))
+
+
+def test_closest_does_not_create_or_update_speakers():
+    tracker = SpeakerTracker(0.6)
+    tracker.assign(A)
+    tracker.assign(B)
+    assert tracker.closest(C * 0.1 + A)[0] == "Speaker 1"
+    assert tracker.speaker_count == 2
+
+
+def test_closest_without_known_speakers_fails_loudly():
+    with pytest.raises(ValueError):
+        SpeakerTracker(0.6).closest(A)

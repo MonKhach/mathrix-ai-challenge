@@ -28,6 +28,7 @@ class NvidiaOnnxASR:
 
         self.name = "nvidia-onnx" + (f"-{quantization}" if quantization else "")
         self._model = onnx_asr.load_model(self.REPO_ID, quantization=quantization)
+        self._detailed = self._model.with_timestamps()  # same model, also returns log-probabilities
 
     def transcribe(self, audio: np.ndarray) -> str:
         _check_audio(audio)
@@ -35,6 +36,19 @@ class NvidiaOnnxASR:
         if not isinstance(text, str):
             raise TypeError(f"onnx-asr returned {type(text).__name__}, expected str")
         return text
+
+    def transcribe_with_confidence(self, audio: np.ndarray) -> tuple[str, float | None]:
+        """Text plus confidence in (0, 1]: the geometric mean of the per-token probabilities
+        (exp of the mean token log-probability). None if nothing was recognised."""
+        _check_audio(audio)
+        result = self._detailed.recognize(audio, sample_rate=TARGET_RATE)
+        if not hasattr(result, "logprobs"):
+            raise TypeError(f"onnx-asr returned {type(result).__name__}, expected TimestampedResult")
+        if not result.text.strip():
+            return "", None
+        if not result.logprobs:
+            raise ValueError("onnx-asr returned text without log-probabilities")
+        return result.text, float(np.exp(np.mean(result.logprobs)))
 
 
 class WhisperASR:

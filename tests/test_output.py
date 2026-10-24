@@ -13,3 +13,11 @@ def test_segment_has_time_speaker_armenian_english():
 
 def test_latency_is_shown_when_given():
     assert "(latency 2.3 s)" in format_segment(0, "Me", "ա", "a", latency_s=2.26)
+
+
+def test_similarity_is_shown_when_given():
+    assert "(similarity 0.73)" in format_segment(0, "Speaker 1", "ա", "a", similarity=0.731)
+
+
+def test_confidence_is_shown_when_given():
+    assert "(confidence 0.42)" in format_segment(0, "Me", "ա", "a", confidence=0.421)

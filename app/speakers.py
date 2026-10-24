@@ -11,8 +11,12 @@ from app.audio_utils import TARGET_RATE
 
 SPEAKER_REPO_ID = "Wespeaker/wespeaker-voxceleb-resnet34-LM"
 
-# TEMPORARY value. Set from the measurements of evaluation/speaker_eval.py before live use.
-SIMILARITY_THRESHOLD = 0.5
+# Chosen from measurements (DECISIONS.md D27): offline YouTube test (results/speakers.md) and
+# replay of a real call (results/replay_sweep_*.md). Can be changed from the command line.
+SIMILARITY_THRESHOLD = 0.35
+SHORT_PHRASE_S = 1.5      # phrases shorter than this give unreliable fingerprints
+SHORT_RULE = "assign"     # "assign": closest known speaker, no new speaker, no update
+                          # "unknown": label "Speaker ?"   "none": treat like any phrase
 
 
 def _unit(vector: np.ndarray) -> np.ndarray:
@@ -60,14 +64,26 @@ class SpeakerTracker:
     def speaker_count(self) -> int:
         return len(self._sums)
 
-    def assign(self, embedding: np.ndarray) -> tuple[str, float | None]:
-        """Returns (label, similarity to the best known speaker or None for the very first)."""
-        e = _unit(embedding)
+    def _best_match(self, e: np.ndarray) -> tuple[int | None, float | None]:
         best_index, best_similarity = None, None
         for index, total in enumerate(self._sums):
             similarity = cosine_similarity(e, total)
             if best_similarity is None or similarity > best_similarity:
                 best_index, best_similarity = index, similarity
+        return best_index, best_similarity
+
+    def closest(self, embedding: np.ndarray) -> tuple[str, float]:
+        """Label of the most similar known speaker, WITHOUT creating or updating anyone
+        (used for short phrases, whose fingerprints are unreliable)."""
+        if not self._sums:
+            raise ValueError("No known speakers yet")
+        best_index, best_similarity = self._best_match(_unit(embedding))
+        return f"Speaker {best_index + 1}", best_similarity
+
+    def assign(self, embedding: np.ndarray) -> tuple[str, float | None]:
+        """Returns (label, similarity to the best known speaker or None for the very first)."""
+        e = _unit(embedding)
+        best_index, best_similarity = self._best_match(e)
 
         if best_similarity is not None and best_similarity >= self.threshold:
             self._sums[best_index] += e  # update this speaker's average voice

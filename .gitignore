@@ -33,3 +33,6 @@ models/
 .idea/
 Thumbs.db
 desktop.ini
+
+# Private transcripts / logs of real conversations (never commit)
+private/

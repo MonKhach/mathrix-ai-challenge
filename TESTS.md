@@ -58,3 +58,7 @@ Status: ⬜ not run · ✅ pass · ❌ fail. Update the status and date when a c
 | 2026-10-23 | Russian words mixed into Armenian speech (common in everyday Armenian) are not recognised correctly — Armenian-only model; non-Armenian input is out of scope in the brief |
 | 2026-10-23 | Translation can be fluent but wrong (D22) |
 | 2026-10-23 | Program contacts Hugging Face at start-up ("unauthenticated requests" warning) → must work offline (B2) |
+| 2026-10-24 | Replay of real call: proper names / rare words mis-recognised (Ամուլսար → "ամյուսարի" → "Autumn mine"; COP 17 → "17 cup") |
+| 2026-10-24 | Very short phrases translate poorly without context (`Այո` → "Yes, I did."; `Եվ` → "And then.") |
+| 2026-10-24 | Breaths/"hm" recognised as fragments (`Հ.`, `Հովհ.`) and translated into invented sentences → D29 confidence filter |
+| 2026-10-24 | No duplicated lines between Me and the call side with headphones (D3 works) |
