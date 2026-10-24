@@ -5,7 +5,7 @@ phrase -> Armenian text (ASR) -> English (translation) -> speaker label -> Segme
 """
 import re
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from app.audio_utils import TARGET_RATE
 from app.speakers import SpeakerTracker
@@ -34,6 +34,10 @@ class Segment:
     similarity: float | None     # to the chosen/closest speaker (call side only)
     confidence: float | None     # speech-recognition confidence (0-1), None if no text
     unclear: bool                # True: no text, or confidence below the cut-off -> not translated
+    # Measurement (M5): seconds spent per step ("asr", "translate", "speaker") and processing start
+    # (live: wait = started_at - end_time = end-of-phrase silence + time queued behind other phrases).
+    step_times: dict = field(default_factory=dict)
+    started_at: float | None = None
 
 
 class Pipeline:
@@ -61,21 +65,29 @@ class Pipeline:
         return self.tracker.assign(embedding)
 
     def process(self, phrase, clock=time.monotonic) -> Segment:
+        started_at = clock()
         armenian, confidence = self._asr.transcribe_with_confidence(phrase.audio)
         armenian = armenian.strip()
+        steps = {"asr": clock() - started_at}
         too_unsure = (self._min_confidence is not None and confidence is not None
                       and confidence < self._min_confidence)
         if not armenian or too_unsure or is_abbreviation_only(armenian):
             # Noise, breath, "hm"...: shown as unclear, not translated, no speaker change.
             label = "Me" if phrase.source == "mic" else "(unknown)"
             return Segment(phrase.source, label, armenian, "", phrase.start_time, phrase.end_time,
-                           clock(), None, confidence, unclear=True)
+                           clock(), None, confidence, unclear=True, step_times=steps,
+                           started_at=started_at)
+        step_start = clock()
         english = self._translator.translate(armenian)
+        steps["translate"] = clock() - step_start
         if phrase.source == "mic":
             label, similarity = "Me", None
         else:
+            step_start = clock()
             embedding = self._embedder.embed(phrase.audio)
             label, similarity = self.label_from_embedding(
                 phrase.source, embedding, len(phrase.audio) / TARGET_RATE)
+            steps["speaker"] = clock() - step_start
         return Segment(phrase.source, label, armenian, english, phrase.start_time,
-                       phrase.end_time, clock(), similarity, confidence, unclear=False)
+                       phrase.end_time, clock(), similarity, confidence, unclear=False,
+                       step_times=steps, started_at=started_at)

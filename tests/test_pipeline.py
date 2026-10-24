@@ -124,3 +124,29 @@ def test_abbreviation_artifact_is_unclear_even_with_high_confidence():
 def test_abbreviation_artifact_on_mic_stays_me_but_unclear():
     segment = pipeline().process(phrase("mic", 5, 1.0))
     assert segment.unclear and segment.label == "Me"
+
+
+class FakeClock:
+    """Every call returns the next whole second: 0, 1, 2, ..."""
+    def __init__(self):
+        self.now = -1
+
+    def __call__(self):
+        self.now += 1
+        return float(self.now)
+
+
+def test_step_times_are_measured_for_call_side():
+    segment = pipeline().process(phrase("system", 1, 3.0), clock=FakeClock())
+    assert segment.started_at == 0.0
+    assert segment.step_times == {"asr": 1.0, "translate": 1.0, "speaker": 1.0}
+
+
+def test_mic_has_no_speaker_step_time():
+    segment = pipeline().process(phrase("mic", 1, 3.0), clock=FakeClock())
+    assert set(segment.step_times) == {"asr", "translate"}
+
+
+def test_unclear_phrase_has_only_asr_step_time():
+    segment = pipeline().process(phrase("system", 5, 3.0), clock=FakeClock())
+    assert segment.unclear and set(segment.step_times) == {"asr"}

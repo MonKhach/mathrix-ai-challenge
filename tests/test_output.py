@@ -21,3 +21,8 @@ def test_similarity_is_shown_when_given():
 
 def test_confidence_is_shown_when_given():
     assert "(confidence 0.42)" in format_segment(0, "Me", "ա", "a", confidence=0.421)
+
+
+def test_timing_is_shown_in_order_when_given():
+    text = format_segment(0, "Me", "ա", "a", timing={"phrase": 4.24, "wait": 0.7, "asr": 0.21})
+    assert "(phrase 4.2 s, wait 0.7 s, asr 0.2 s)" in text

@@ -71,6 +71,14 @@ def use_utf8_output():
     sys.stderr.reconfigure(encoding="utf-8")
 
 
+def segment_timing(segment, latency=True) -> dict:
+    """Where the time went (M5): phrase length, waiting (live only), then each processing step."""
+    timing = {"phrase": segment.end_time - segment.start_time}
+    if latency:
+        timing["wait"] = segment.started_at - segment.end_time
+    return timing | segment.step_times
+
+
 def segment_text(segment, offset, latency=True, debug=False) -> str:
     """offset: seconds since the start of the session (live) or of the recording (replay)."""
     if segment.unclear:
@@ -80,7 +88,8 @@ def segment_text(segment, offset, latency=True, debug=False) -> str:
     return format_segment(offset, segment.label, segment.armenian, segment.english,
                           latency_s=segment.finished_at - segment.end_time if latency else None,
                           similarity=segment.similarity if debug else None,
-                          confidence=segment.confidence if debug else None)
+                          confidence=segment.confidence if debug else None,
+                          timing=segment_timing(segment, latency) if debug else None)
 
 
 def main():
