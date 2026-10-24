@@ -13,6 +13,28 @@ from transformers import AutoTokenizer
 
 MODELS_DIR = Path(__file__).resolve().parent.parent / "models"
 
+# Decoding settings against translation loops (D33): a length cap bounds the time of any loop,
+# and no repeated 4-token sequence keeps the text clean. Repetition penalty stays off (it dropped
+# parts of sentences in the comparison, evaluation/translation_settings.py).
+MAX_LENGTH_RATIO = 2.0       # output tokens <= ratio * input tokens + LENGTH_MARGIN; None = off
+LENGTH_MARGIN = 10
+NO_REPEAT_NGRAM_SIZE = 4     # 0 = off; n = the same n tokens may not appear twice
+REPETITION_PENALTY = 1.0     # 1.0 = off; > 1 makes repeating tokens less likely
+
+
+def decoding_options(n_input_tokens: int, max_length_ratio=MAX_LENGTH_RATIO,
+                     no_repeat_ngram_size=NO_REPEAT_NGRAM_SIZE,
+                     repetition_penalty=REPETITION_PENALTY) -> dict:
+    """Keyword arguments for CTranslate2 translate_batch (only the settings that are on)."""
+    options = {}
+    if max_length_ratio is not None:
+        options["max_decoding_length"] = int(n_input_tokens * max_length_ratio) + LENGTH_MARGIN
+    if no_repeat_ngram_size:
+        options["no_repeat_ngram_size"] = no_repeat_ngram_size
+    if repetition_penalty != 1.0:
+        options["repetition_penalty"] = repetition_penalty
+    return options
+
 
 class _CT2Translator:
     """Shared logic: text -> tokens -> CTranslate2 -> tokens -> text."""
@@ -29,13 +51,15 @@ class _CT2Translator:
                                     f"Run: python scripts/convert_translation_models.py")
         self._translator = ctranslate2.Translator(str(model_path), device="cpu")
         self._tokenizer = AutoTokenizer.from_pretrained(self.hf_name, **self.tokenizer_kwargs)
+        self.decoding = {}  # overrides for decoding_options (used by evaluation scripts)
 
     def translate(self, text: str) -> str:
         if not text.strip():
             return ""
         tokens = self._tokenizer.convert_ids_to_tokens(self._tokenizer.encode(text))
         prefix = [self.target_prefix] if self.target_prefix else None
-        result = self._translator.translate_batch([tokens], target_prefix=prefix)
+        result = self._translator.translate_batch(
+            [tokens], target_prefix=prefix, **decoding_options(len(tokens), **self.decoding))
         output_tokens = result[0].hypotheses[0]
         if self.target_prefix:
             output_tokens = output_tokens[len(self.target_prefix):]  # drop the language token
