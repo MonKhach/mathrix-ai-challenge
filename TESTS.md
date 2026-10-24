@@ -68,3 +68,5 @@ Status: ⬜ not run · ✅ pass · ❌ fail. Update the status and date when a c
 | 2026-10-24 | NLLB can loop on garbled input ("you want to go" ×50, 27.8 s) → D33 length cap + no repeated 4-token sequence |
 | 2026-10-24 | Hard cut at 10 s (D32) can split a word for speakers who never pause (podcast host); not seen in a normal conversation |
 | 2026-10-24 | Headphones unplugged → Windows plays the call through the laptop speakers, so the mic can pick up the other side (would appear as "Me"); after replugging, the call app may keep using the speakers → set its output back to the headphones (README) |
+| 2026-10-24 | Speech model sometimes doubles a syllable or letter (`Շատատ`, `դուրր`, `գործործը`), more often on fast/call audio; not caused by our audio path (D35, `results/asr_paths.md`) |
+| 2026-10-24 | Splitting speech into phrases costs ~2 WER points: words at a phrase boundary are recognised slightly worse (`հանդիպել` → `հանդիպեք`) — the price of showing text phrase by phrase (D35) |

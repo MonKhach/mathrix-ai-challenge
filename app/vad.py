@@ -70,19 +70,23 @@ class SileroModel:
 
 class PhraseDetector:
     def __init__(self, source: str, speech_prob, max_phrase_s: float = MAX_PHRASE_S,
-                 soft_after_s: float | None = SOFT_AFTER_S, soft_silence_s: float = SOFT_SILENCE_S):
+                 soft_after_s: float | None = SOFT_AFTER_S, soft_silence_s: float = SOFT_SILENCE_S,
+                 pre_roll_s: float = PRE_ROLL_S, tail_keep_s: float = TAIL_KEEP_S):
         """speech_prob: function(512-sample frame) -> probability (SileroModel, or a fake in tests)."""
         if soft_after_s is not None and not soft_silence_s < END_SILENCE_S:
             raise ValueError(f"soft_silence_s must be shorter than {END_SILENCE_S} s")
         if soft_after_s is not None and not soft_after_s < max_phrase_s:
             raise ValueError("soft_after_s must be shorter than max_phrase_s")
+        if pre_roll_s < 0 or tail_keep_s < 0:
+            raise ValueError("pre_roll_s and tail_keep_s must not be negative")
         self.source = source
         self._speech_prob = speech_prob
+        self._tail_keep_frames = _frames(tail_keep_s)
         self._max_frames = _frames(max_phrase_s)
         self._soft_after_frames = None if soft_after_s is None else _frames(soft_after_s)
         self._soft_silence_frames = _frames(soft_silence_s)
         self._buffer = np.zeros(0, dtype=np.float32)
-        self._pre_roll = deque(maxlen=_frames(PRE_ROLL_S))
+        self._pre_roll = deque(maxlen=max(1, _frames(pre_roll_s)))  # >= 1: the frame that starts speech
         self._in_phrase = False
         self._last_audio_time = None
 
@@ -146,7 +150,7 @@ class PhraseDetector:
 
     def _finish(self, trailing_silence: int):
         self._in_phrase = False
-        drop = max(0, trailing_silence - _frames(TAIL_KEEP_S))
+        drop = max(0, trailing_silence - self._tail_keep_frames)
         frames = self._frames[:len(self._frames) - drop]
         if self._speech_frames < _frames(MIN_PHRASE_S):
             return None  # too short: a click or cough

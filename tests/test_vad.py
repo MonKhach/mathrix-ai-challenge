@@ -111,3 +111,17 @@ def test_invalid_soft_settings_fail_loudly():
         PhraseDetector("mic", fake_prob, soft_after_s=6.0, soft_silence_s=0.8)
     with pytest.raises(ValueError):
         PhraseDetector("mic", fake_prob, max_phrase_s=5.0, soft_after_s=6.0)
+
+
+def test_longer_pre_roll_and_tail_keep_more_audio():
+    short = feed(PhraseDetector("mic", fake_prob), [(0, 1.0), (1, 1.0), (0, 1.0)])[0][0]
+    long = feed(PhraseDetector("mic", fake_prob, pre_roll_s=0.4, tail_keep_s=0.3),
+                [(0, 1.0), (1, 1.0), (0, 1.0)])[0][0]
+    extra = (len(long.audio) - len(short.audio)) / 16_000
+    assert abs(extra - 0.4) < 0.07  # 0.2 s more before + 0.2 s more after
+
+
+def test_negative_edges_fail_loudly():
+    import pytest
+    with pytest.raises(ValueError):
+        PhraseDetector("mic", fake_prob, pre_roll_s=-0.1)
