@@ -14,6 +14,10 @@ from app.audio_utils import StreamResampler
 CHUNK_SIZE = 512  # frames per callback at the device rate (~10.7 ms at 48 kHz)
 
 
+class AudioDeviceLost(RuntimeError):
+    """A capture stream stopped (device unplugged/disabled) or its callback failed (TESTS.md E3)."""
+
+
 @dataclass
 class AudioChunk:
     source: str          # "mic" or "system"
@@ -69,9 +73,20 @@ class AudioCapture:
             return (in_data, pyaudio.paAbort)
 
     def raise_if_failed(self):
+        """Called on every loop. Unplugging a device stops its stream WITHOUT an error from the
+        audio library (E3, 2026-10-24: the call side went silent, nothing was printed, and it stayed
+        dead after plugging back in), so we also check that the stream is still running."""
         if self._error is not None:
-            raise RuntimeError(f"Audio capture from {self.name} failed") from self._error
+            raise AudioDeviceLost(f"Audio capture from {self.name} failed: {self._error}") \
+                from self._error
+        if not self._stream.is_active():
+            raise AudioDeviceLost(f"Audio device stopped: {self.name} (unplugged or disabled?). "
+                                  f"Plug it back in, check --list-devices (the number can "
+                                  f"change) and restart the program.")
 
     def close(self):
-        self._stream.stop_stream()
+        try:
+            self._stream.stop_stream()  # can fail on a device that is already gone
+        except OSError:
+            pass
         self._stream.close()

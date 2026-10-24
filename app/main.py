@@ -130,7 +130,7 @@ def main():
 
     import pyaudiowpatch as pyaudio
 
-    from app.audio_capture import AudioCapture, print_devices
+    from app.audio_capture import AudioCapture, AudioDeviceLost, print_devices
     from app.vad import PhraseDetector, SileroModel
 
     with pyaudio.PyAudio() as pa:
@@ -158,6 +158,7 @@ def main():
         chunks = queue.Queue()
         captures = [AudioCapture(pa, index, name, chunks) for name, index in sources.items()]
         overflows_reported = {c.source: 0 for c in captures}
+        device_lost = False
         session_start = time.monotonic()
         last_memory_report = session_start
 
@@ -200,12 +201,17 @@ def main():
                     last_memory_report = now
         except KeyboardInterrupt:
             emit("Stopped.")
+        except AudioDeviceLost as error:
+            emit(f"\nERROR: {error}")
+            device_lost = True
         finally:
             emit(memory_line("end of session"))
             for c in captures:
                 c.close()
             if log:
                 log.close()
+    if device_lost:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

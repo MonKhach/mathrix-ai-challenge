@@ -18,7 +18,7 @@ Status: ⬜ not run · ✅ pass · ❌ fail. Update the status and date when a c
 | # | Check | How | Status |
 |---|---|---|---|
 | B1 | Latency **≤ 5 s** from end of phrase to English line | Measured and logged per segment (median and worst case) | ✅ single source 2026-10-23: mic 1.1–1.3 s, YouTube 2.2–2.7 s. ✅ both sources 2026-10-24 (mic + 2-person podcast): Me 1.6 s, call side 3.2–3.3 s, max 3.3 s (5 phrases — repeat longer in rehearsal). ❌ 2026-10-24 live with Meet + fast podcast: phrases of 11–15 s → 4.8–7.1 s (no backlog, translation of long phrases) → D32 (0.15 s pause after 6 s, max 10 s). ✅ D32 confirmed live 2026-10-24 (Meet, 2 friends, 5 min, 55 lines): Me median 2.4 s / max 4.7 s; call side median 2.1 s, max 3.6 s except **one 28.9 s translation loop** → D33 (now max 3.1 s offline for that line; ⬜ recheck live) |
-| B2 | Runs **fully offline** (no cloud APIs) | Disconnect from the internet after models are downloaded → program still works | ✅ 2026-10-23 Wi-Fi off, mic source: models loaded, no HF warning, transcription + translation OK. ⬜ recheck after speaker model is added |
+| B2 | Runs **fully offline** (no cloud APIs) | Disconnect from the internet after models are downloaded → program still works | ✅ 2026-10-23 Wi-Fi off, mic source: models loaded, no HF warning, transcription + translation OK. ✅ 2026-10-24 recheck with all 4 models (Wi-Fi off, mic + local recordings on the call side): no network warning, transcription, translation and speaker labels OK |
 | B3 | Fits in **8 GB RAM** while a call app is running | Task Manager during a live test + program's own memory report (`[memory, …]` lines, `app/memory.py`) | ⚠️ fits but tight, 2026-10-24 (fp32, Meet with camera + YouTube): program 1.7–1.9 GB (peak 1.93 GB), PC 0.3–0.8 GB available (90–96 % used), commit charge 13.1 / 14.3 GB, no crash. Closing other apps did not help (Chrome/Meet grew to 1.1 GB). 5-min friends' call: program 1.73–1.77 GB (peak 1.82 GB), stable, PC 0.3–0.7 GB available. **fp32 kept** (D17); ⬜ recheck in a ~30 min rehearsal |
 | B4 | No paid tools/services used | Review dependencies list | ⬜ |
 | B5 | Runs on **this laptop** (Windows 11, CPU only) | Full rehearsal before the interview | ⬜ |
@@ -45,8 +45,8 @@ Status: ⬜ not run · ✅ pass · ❌ fail. Update the status and date when a c
 |---|---|---|
 | E1 | Very long phrase without a pause is cut at the maximum length, not lost | ✅ unit test (tests/test_vad.py); ✅ replay of podcast_long_02 (D32): cut at 10 s, nothing lost, but a word can be split at the cut |
 | E4 | Translation never loops / runs away ("you want to go" ×50) | ✅ 2026-10-24 D33: 0 loops in 132 lines, worst 3.1 s; real repetitions kept (`evaluation/translation_settings.py`) |
-| E2 | Silence on one source does not block the other source | ⬜ |
-| E3 | Unplugging/replugging headphones: clear error, documented in README | ⬜ |
+| E2 | Silence on one source does not block the other source | ✅ 2026-10-24: call side silent → Me lines 1.5–1.6 s; mic silent → call-side lines 2.2–2.6 s |
+| E3 | Unplugging/replugging headphones: clear error, documented in README | ❌ 2026-10-24 before fix: call side went **silent with no message**, stayed dead after replugging (mic kept working). ✅ after D34: `ERROR: Audio device stopped: Headphones … restart the program` right after unplugging, program exits (4 unit tests). ⬜ README |
 
 ## F. Before every commit
 - `git status` → no `.wav`, model files, `.venv` or secrets listed.
@@ -67,3 +67,4 @@ Status: ⬜ not run · ✅ pass · ❌ fail. Update the status and date when a c
 | 2026-10-24 | Noise before speech (friend's mic problem) gives a fingerprint unlike any voice (similarity −0.02); live pipeline only lets phrases with real text create speakers, but noise transcribed as a word could still create an extra speaker |
 | 2026-10-24 | NLLB can loop on garbled input ("you want to go" ×50, 27.8 s) → D33 length cap + no repeated 4-token sequence |
 | 2026-10-24 | Hard cut at 10 s (D32) can split a word for speakers who never pause (podcast host); not seen in a normal conversation |
+| 2026-10-24 | Headphones unplugged → Windows plays the call through the laptop speakers, so the mic can pick up the other side (would appear as "Me"); after replugging, the call app may keep using the speakers → set its output back to the headphones (README) |
