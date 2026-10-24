@@ -16,9 +16,12 @@ import sys
 import time
 from datetime import datetime
 
+from app.memory import memory_line
 from app.output import format_segment, format_timestamp
 from app.pipeline import SHORT_RULES, Pipeline
 from app.speakers import SHORT_PHRASE_S, SHORT_RULE, SIMILARITY_THRESHOLD
+
+MEMORY_REPORT_EVERY_S = 60  # with --debug (TESTS.md B3)
 
 
 def add_pipeline_arguments(parser):
@@ -33,7 +36,8 @@ def add_pipeline_arguments(parser):
                         help="phrases with lower recognition confidence are shown as unclear "
                              "and not translated (default: off, D29)")
     parser.add_argument("--debug", action="store_true",
-                        help="also show speaker similarity and recognition confidence")
+                        help="also show speaker similarity and recognition confidence "
+                             "(live: also memory use every 60 s)")
 
 
 def load_models():
@@ -131,13 +135,15 @@ def main():
         captures = [AudioCapture(pa, index, name, chunks) for name, index in sources.items()]
         overflows_reported = {c.source: 0 for c in captures}
         session_start = time.monotonic()
+        last_memory_report = session_start
 
         emit(f"\n=== Session {datetime.now():%Y-%m-%d %H:%M:%S} ===")
         for c in captures:
             emit(f"Listening to {c.name} ({'Me' if c.source == 'mic' else 'call side'})")
         emit(f"Speaker settings: threshold {args.speaker_threshold}, short phrases "
              f"< {args.short_seconds} s -> rule '{args.short_rule}', min confidence "
-             f"{args.min_confidence}. Press Ctrl+C to stop.\n")
+             f"{args.min_confidence}. Press Ctrl+C to stop.")
+        emit(memory_line("models loaded") + "\n")
         try:
             while True:
                 for c in captures:
@@ -162,9 +168,14 @@ def main():
                 for phrase in sorted(phrases, key=lambda p: p.end_time):
                     emit(segment_text(pipeline.process(phrase), phrase.start_time - session_start,
                                       debug=args.debug))
+
+                if args.debug and now - last_memory_report >= MEMORY_REPORT_EVERY_S:
+                    emit(memory_line(format_timestamp(now - session_start)))
+                    last_memory_report = now
         except KeyboardInterrupt:
             emit("Stopped.")
         finally:
+            emit(memory_line("end of session"))
             for c in captures:
                 c.close()
             if log:

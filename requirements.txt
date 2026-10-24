@@ -8,7 +8,7 @@ onnx-asr[cpu,hub]==0.12.0   # pinned: speaker embeddings use an internal API (D2
 # Evaluation
 jiwer
 pytest
-# Benchmark: memory measurement
+# Memory measurement (benchmarks + live memory report, B3)
 psutil
 # Translation (CTranslate2 engine + tokenizers; no torch needed at runtime)
 ctranslate2
